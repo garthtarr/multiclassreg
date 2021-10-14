@@ -1,0 +1,23 @@
+Package: multiclassreg
+Type: Package
+Title: Fused estimation of the multi-class regression model
+Version: 0.2.1
+Authors@R: c(person("Garth", "Tarr", role = c("aut"), email = "garth.tarr@gmail.com"), person("Ines", "Wilms", role = c("aut", "cre"), email = "ines.wilms@kuleuven.be"))
+Description: Joint estimation of K distinct but related regression model using fused penalties. 
+License: GPL (>= 2)
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.1
+Imports: 
+    Matrix,
+    genlasso,
+    tidyr,
+    magrittr,
+    dplyr,
+    tibble,
+    ggplot2,
+    mvtnorm
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
