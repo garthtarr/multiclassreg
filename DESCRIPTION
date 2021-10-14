@@ -2,7 +2,7 @@ Package: multiclassreg
 Type: Package
 Title: Fused estimation of the multi-class regression model
 Version: 0.2.1
-Authors@R: c(person("Garth", "Tarr", role = c("aut"), email = "garth.tarr@gmail.com"), person("Ines", "Wilms", role = c("aut", "cre"), email = "ines.wilms@kuleuven.be"))
+Authors@R: c(person("Garth", "Tarr", role = c("aut"), email = "garth.tarr@gmail.com", comment = c(ORCID = "0000-0002-6605-7478")), person("Ines", "Wilms", role = c("aut", "cre"), email = "i.wilms@maastrichtuniversity.nl", comment = c(ORCID = "0000-0000-0000-0000")))
 Description: Joint estimation of K distinct but related regression model using fused penalties. 
 License: GPL (>= 2)
 Encoding: UTF-8
