@@ -3,6 +3,8 @@ inst/doc
 .Rhistory
 .Rapp.history
 
+R/_todo.R
+
 # Session Data files
 .RData
 # Example code in package build process
