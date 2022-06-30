@@ -15,3 +15,8 @@ You can install the package from GitHub:
 ``` r
 remotes::install_github("garthtarr/multiclassreg")
 ```
+
+### Documentation
+
+Documentation can be found at
+<https://garthtarr.github.io/multiclassreg/>
