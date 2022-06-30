@@ -71,26 +71,30 @@ p1 = cv1$class_knot_summary %>%
   ggplot2::ggplot(ggplot2::aes(x = knot, colour = class)) +
   ggplot2::geom_point(ggplot2::aes(y = MSFE)) +
   ggplot2::geom_line(ggplot2::aes(y = MSFE)) + 
-  labs(subtitle = "MSFE by class")
+  labs(subtitle = "MSFE by class") + 
+  theme_bw()
 
 p2 = cv1$class_knot_summary %>%
   ggplot2::ggplot(ggplot2::aes(x = knot, colour = class)) +
   ggplot2::geom_point(ggplot2::aes(y = MAFE)) +
   ggplot2::geom_line(ggplot2::aes(y = MAFE)) + 
-  labs(subtitle = "MAFE by class")
+  labs(subtitle = "MAFE by class")+ 
+  theme_bw()
 
 p3 = cv1$knot_summary %>%
   ggplot2::ggplot(ggplot2::aes(x = knot, group = "")) +
   ggplot2::geom_point(ggplot2::aes(y = MSFE), colour = "blue") +
   ggplot2::geom_line(ggplot2::aes(y = MSFE), colour = "blue") + 
-  labs(subtitle = "Overall MSFE")
+  labs(subtitle = "Overall MSFE")+ 
+  theme_bw()
 
 
 p4 = cv1$knot_summary %>%
   ggplot2::ggplot(ggplot2::aes(x = knot, group = "")) +
   ggplot2::geom_point(ggplot2::aes(y = MAFE), colour = "red") +
   ggplot2::geom_line(ggplot2::aes(y = MAFE), colour = "red") + 
-  labs(subtitle = "Overall MAFE")
+  labs(subtitle = "Overall MAFE")+ 
+  theme_bw()
 
 cowplot::plot_grid(p1, p3, p2, p4, align = "hv", axis = "tblr")
 ```
