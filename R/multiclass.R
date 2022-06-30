@@ -37,31 +37,7 @@
 #' # force a missing predictor
 #' df$X1[df$class == "A"] = NA
 #' df$X7[df$class == "B"] = NA
-
 #' mc = mc_reg(df)
-#' mc$predictions %>% ggplot2::ggplot(ggplot2::aes(x = y, y = prediction)) +
-#'   geom_abline() + 
-#'   ggplot2::geom_point() +
-#'   ggplot2::facet_grid(class ~ knot, labeller = label_both) +
-#'   ggplot2::geom_smooth(method = "lm") +
-#'   ggplot2::geom_point() + 
-#'   labs(title = "Original scale before adding an intercept adjustment")
-
-#' mc$scaled_predictions %>% ggplot2::ggplot(ggplot2::aes(x = y, y = scaled_prediction)) +
-#'   geom_abline() + 
-#'   ggplot2::geom_point() +
-#'   ggplot2::facet_grid(class ~ knot, labeller = label_both) +
-#'   ggplot2::geom_smooth(method = "lm") +
-#'   ggplot2::geom_point() + 
-#'   labs(title = "Scaled version")
-#'   
-#' mc$predictions %>% ggplot2::ggplot(ggplot2::aes(x = y, y = yhat)) +
-#'  geom_abline() + 
-#'  ggplot2::geom_point() +
-#'  ggplot2::facet_grid(class ~ knot, labeller = label_both) +
-#'  ggplot2::geom_smooth(method = "lm") +
-#'  ggplot2::geom_point() + 
-#'  labs(title = "Original scale with alpha added in")
 #'  
 #' @export
 mc_reg <- function(df, 
@@ -116,16 +92,6 @@ mc_reg <- function(df,
   # X: matrix version of X_list
   # var_indicator: identifying class and variable?
   
-  # what was the issue with degrees of freedom?
-  # these two methods seem to give the same approach
-  # starts with all the same, for large lambda
-  # decreases until we get to the 
-  # number of variables * number of classes - 1 
-  # then need to add on number of variables * number of classes
-  # for the separate least squares solution
-  # out$fit$df
-  # out$fit$beta %>% round(5) %>% apply(2, dplyr::n_distinct)
-  # I can't recall what was so bad about this?!?!
   
   ## FITTED VALUES ##
   
@@ -143,14 +109,8 @@ mc_reg <- function(df,
   # length(unique(lambdas))
   # length(unique(colnames(out_coef)))
   
-  # not sure that this will work if there are 
-  # missing variables in particular classes
   unadjusted_yhat = out$X %*% out_coef #out$coef
-  # when there are missing variables there's a missing column
-  # in out$X and a corresponding missing row in out$coef
-  # so I think this does actually work in the presence of
-  # missingness....!!! does this make what I'm doing below
-  # redundant?
+  # does this make what I'm doing below redundant?
   
   # add class_means_vector back in (intercept adjustment)
   nc = ncol(unadjusted_yhat)
@@ -199,6 +159,10 @@ mc_reg <- function(df,
     dplyr::group_by(knot) %>% 
     dplyr::mutate(df = dplyr::n_distinct(round(coef, 5)))
   
+  lambda_knot = estimated_coef %>% 
+    dplyr::select(knot, lambda) %>% 
+    dplyr::distinct()
+  
   # naming convention: if it doesn't have scaled in front then it means
   # unscaled original data or rescaled (i.e. transformed coefficients).
   # if it has scaled in front it means that it was built using the 
@@ -233,7 +197,8 @@ mc_reg <- function(df,
     dplyr::select(- !!rlang::sym(y_var)) %>% 
     # convert the x data frame into long form test_x_data_df
     tidyr::gather(key = x_var,
-                  value = x_value, -class, -obs_no)
+                  value = x_value,
+                  -class, -obs_no)
   
   # calculate the residuals by joining the x data in
   # with the coefficient date frame, this repeats the
@@ -254,31 +219,28 @@ mc_reg <- function(df,
     dplyr::left_join(scaled_pred_y_data, 
                      by = c("obs_no", "class"))
   
-  alpha = preds %>% dplyr::group_by(class, knot) %>% 
+  alpha = preds %>% 
+    dplyr::group_by(class, knot) %>% 
     dplyr::summarise(class_means = mean(!!rlang::sym(y_var)),
                      scaled_pred_means = mean(prediction)) %>% 
     dplyr::mutate(alpha = class_means - scaled_pred_means) %>% 
     dplyr::select(-class_means, -scaled_pred_means)
   
-  preds = preds %>% dplyr::left_join(alpha, by = c("class", "knot")) %>% 
-    dplyr::mutate(yhat = prediction + alpha) 
+  preds = preds %>%
+    dplyr::left_join(alpha, by = c("class", "knot")) %>% 
+    dplyr::mutate(yhat = prediction + alpha) %>% 
+    dplyr::left_join(lambda_knot, by = "knot")
   
   # probably should just remove the "prediction" from preds object
-  # but will leave it in temporarily
   
   gamma = 0.5
   Kp = max(preds$df)
-  bic = preds %>% dplyr::group_by(knot, df) %>% 
+  bic = preds %>% dplyr::group_by(knot, df, lambda) %>% 
     dplyr::summarise(
       sigma2 = mean((y-yhat)^2),
       df = mean(df),
       n = dplyr::n(),
-      aic = log(sigma2) + df * 2 / n,
-      bic1 = log(sigma2) + df * log(n) / n,
-      bic2 = sigma2 + df * log(n) / n,
-      # update the ebic
-      # something strange going on with the two bic
-      ebic = log(sigma2) + df * (log(n) + 2*gamma*log(Kp))/n
+      aic = log(sigma2) + df * 2 / n
     )
   
   # now need to make the alpha coefficients accessible to 
@@ -303,34 +265,6 @@ mc_reg <- function(df,
   return(out)
 }
 
-#' Predict method for mcreg objects
-#' 
-#' Predict given an input.
-#'
-#' @param obj an multiclass regression object (object of class mcreg)
-#' @param class_var the name of the class variable in the data frame
-#' @param y_var the name of the dependent variable in the data frame
-#' @param ... additional arguments to be passed on to multiclass_reg()
-#' @return A list with the following components
-#' @examples
-#' p = 7
-#' k = 2
-#' n = 20
-#' beta = c(1,2)
-#' set.seed(1)
-#' X = list(matrix(rnorm(p*n), ncol = p), matrix(rnorm(p*n), ncol = p))
-#' Y = list(rnorm(n), rnorm(n))
-#' df = lists_to_data(Y, X)
-#' multiclass_reg(df)
-#' @export
-predict.mcreg <- function(obj, 
-                          class_var = "class", 
-                          x_vars = NULL, 
-                          coef_type = c("rescaled","scaled"),
-                          plot_type = c("knot","lambda"),
-                          log_x = NULL){
-  
-}
 
 #' Plot coefficient paths for multiclass regression objects
 #' 
@@ -359,7 +293,8 @@ predict.mcreg <- function(obj,
 #' X = list(matrix(rnorm(p*n), ncol = p), matrix(rnorm(p*n), ncol = p))
 #' Y = list(rnorm(n), rnorm(n))
 #' df = lists_to_data(Y, X)
-#' mc_reg(df)
+#' mc1 = mc_reg(df)
+#' plot(mc1)
 #' @export
 plot.mcreg <- function(obj, 
                        class_var = "class", 
@@ -508,8 +443,6 @@ multiclass_reg <- function(
                       normalize = normalize)
   
   # Multi-class fit
-  # want to optionally specify lambda sequence here
-  # not sure that we can?!?
   fit <- genlasso::genlasso(y=get.input$Y,
                             X=get.input$X,
                             D=get.input$D)

@@ -2,7 +2,7 @@
 % Please edit documentation in R/data_to_lists.R
 \name{lists_to_data}
 \alias{lists_to_data}
-\title{Take lists and convert them to data frame}
+\title{List to data frame}
 \usage{
 lists_to_data(Y, X)
 }
@@ -13,8 +13,21 @@ lists_to_data(Y, X)
 }
 \value{
 A data frame with all the X variables, 
-  as well as the Y variable and a new column identifying the class.
+as well as the Y variable and a new column identifying 
+the class.
 }
 \description{
 Take lists and convert them to data frame
+}
+\examples{
+p = 7
+k = 2
+n = 20
+beta = c(1,2)
+set.seed(1)
+X = list(matrix(rnorm(p*n), ncol = p), matrix(rnorm(p*n), ncol = p))
+Y = list(rnorm(n), rnorm(n))
+df = lists_to_data(Y, X)
+lst = data_to_lists(df)
+ 
 }

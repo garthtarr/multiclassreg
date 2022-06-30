@@ -4,7 +4,7 @@
 #' @param X list of size K. Its kth entry is a matrix of size n_kxp
 #' @param weighting logical. If TRUE: use weighted regularization parameter
 #' @param weights provide vector of weights
-#' @param wtype either "size" (default, weighting based on group samle sizes)
+#' @param wtype either `"size"` (default, weighting based on group sample sizes) or `"sizesqrt"`
 #' @param buildD logical. If TRUE: compute Dmatrix
 #' @param normalize logical. Whether or not to normalize the weights (currently divides by maximum).
 #' @return A list with the following components
@@ -22,17 +22,11 @@ inputs <- function(
   normalize = TRUE
   ){
   
-  # Depends on Matrix package
-  
   # Start code
   # Dimensions
   K <- length(Y) # number f classes
-  pseq <- sapply(X, function(U){ sum(!is.na(apply(U, 2, mean, na.rm=T))) }) # Effective number of predictors per class
-  # p <- max(pseq) # maximum number of variables
-  # GT Feb 2020
-  # note the above isn't quite right when there are say two classes
-  # with one variable missing in each class, we'll undercount the 
-  # max number of variables by one.
+  # Effective number of predictors per class
+  pseq <- sapply(X, function(U){ sum(!is.na(apply(U, 2, mean, na.rm=T))) }) 
   p = ncol(X[[1]])
   n <- sapply(Y, length)
   
@@ -47,9 +41,8 @@ inputs <- function(
     count <- 0
     
     for(i.K in 1:K){
-      for(i.p in 1:p){ # GT Feb 2020 pseq[i.K]){
-        # if(!all(is.na(X[[i.K]][, i.p]))){
-        if(!any(is.na(X[[i.K]][, i.p]))){ ####IW: change this line 
+      for(i.p in 1:p){ 
+        if(!any(is.na(X[[i.K]][, i.p]))){ 
           count <- count + 1
           var_indicator[i.p, i.K] <- count
         }
@@ -106,20 +99,11 @@ inputs <- function(
   }
   
   # Build predictor set deleting the NA columns
-  ####IW: change these lines
   Xnew <- vector("list", K)
   for(i.K in 1:K){
     Xnew[[i.K]] <- X[[i.K]][, which(!is.na(var_indicator[, i.K]))]
     colnames(Xnew[[i.K]]) <- colnames(X[[i.K]])[which(!is.na(var_indicator[, i.K]))]
   }
-  # for(i in which(pseq!=p)){
-  #   Xnew[[i]] <-  X[[i]][, !apply(X[[i]], 2, function(U){all(is.na(U))})]
-  #   colnames(Xnew[[i]]) <- colnames(X[[i]])[!apply(X[[i]], 2, function(U){all(is.na(U))})]
-  # }
-  # for(i in which(pseq==p)){
-  #   Xnew[[i]] <-  X[[i]]
-  #   colnames(Xnew[[i]]) <- colnames(X[[i]])
-  # }
   
   # Create Y and X inputs for fusedlasso function
   Ypool <- unlist(Y)

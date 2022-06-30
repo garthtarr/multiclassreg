@@ -46,5 +46,6 @@ set.seed(1)
 X = list(matrix(rnorm(p*n), ncol = p), matrix(rnorm(p*n), ncol = p))
 Y = list(rnorm(n), rnorm(n))
 df = lists_to_data(Y, X)
-mc_reg(df)
+mc1 = mc_reg(df)
+plot(mc1)
 }

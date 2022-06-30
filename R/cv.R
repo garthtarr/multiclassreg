@@ -6,8 +6,19 @@
 #' @param type MSFE or MAFE
 #' @param l1length length sparsity grid l1 penalty
 #' @return A list with the following components
-#' \item{lambda_opt}{Selected value of the regularization parameter via BIC}
-#' \item{bhat_opt}{Estimated coefficients selected via BIC}
+#' \item{train}{list of the training splits used}
+#' \item{test}{list of the testing splits used}
+#' \item{mc_fits}{List of length Kfold. Each element is a mc_reg() object that was fit on a training split.}
+#' \item{fe}{A data frame of forecast errors. Includes CV prediction (yhat), observed value (y), class and knot.}
+#' \item{pooled_fe}{}
+#' \item{class_knot_fold_summary}{One MSFE and MAFE for each fold, knot, class combination.}
+#' \item{class_knot_summary}{One MSFE and MAFE for each knot and each class.}
+#' \item{knot_summary}{One MSFE and MAFE for each knot.}
+#' \item{pooled_class_fold_summary}{One MSFE and MAFE for each fold and each class.}
+#' \item{pooled_class_summary}{One MSFE and MAFE for each class.}
+#' \item{pooled_summary}{One overall MSFE and MAFE for the pooled model.}
+#' \item{fit_MSFE}{Data frame with the coefficients from the full fitted model that correspond to the optimal knot as defined by MSFE cross validation, this is a subset of \code{fit$coef_df} which is supplied as an argument to the CV function.}
+#' \item{fit_MAFE}{Data frame with the coefficients from the full fitted model that correspond to the optimal knot as defined by MAFE cross validation, this is a subset of \code{fit$coef_df} which is supplied as an argument to the CV function.}
 #' @examples
 #' p <- 7
 #' k <- 2
@@ -19,50 +30,6 @@
 #' df = lists_to_data(Y, X)
 #' res = mc_reg(df)
 #' cv_res <- mc_cv(res)
-#' 
-#' p = 7
-#' k = 2
-#' n = 100
-#' beta = c(1,2)
-#' set.seed(2)
-#' X = list(matrix(rnorm(p*n), ncol = p), matrix(rnorm(p*n), ncol = p))
-#' Y = list(rnorm(n), rnorm(n))
-#' df = lists_to_data(Y, X)
-#' Xk <- mvtnorm::rmvnorm(n*2, mean=1:p, sigma=diag(1:p)) %>% round(2)
-#' yk <- Xk %*% c(0,0,4,0,0,8,0) + rnorm(n*2) + rep(c(0,100), each = n) %>% round(2)
-#' df = data.frame(y = yk, Xk, class = rep(c("A", "B"), each = n))
-#' res = mc_reg(df)
-#' cv_res <- mc_cv(res)
-#' 
-#' # different cv runs have different lamda values
-#' # is this a problem?
-#' cv_res$cv_fits[[1]]$lambda
-#' cv_res$cv_fits[[2]]$lambda
-#' # should fix the lambda grid across all lambda runs
-#' # with fixed lambda values, we need to force that
-#' # using either the full original data 
-#' # Note this is "fixed" because we don't use the 
-#' # default lambda grid when extracting coefficients
-#' 
-#' 
-#' p1 = cv_res$class_knot_summary %>%
-#'   ggplot2::ggplot(ggplot2::aes(x = knot, colour = class)) +
-#'   ggplot2::geom_point(ggplot2::aes(y = MSFE)) +
-#'   ggplot2::geom_line(ggplot2::aes(y = MSFE))
-#'
-#' p2 = cv_res$class_knot_summary %>%
-#'   ggplot2::ggplot(ggplot2::aes(x = knot, colour = class)) +
-#'   ggplot2::geom_point(ggplot2::aes(y = MAFE)) +
-#'   ggplot2::geom_line(ggplot2::aes(y = MAFE))
-#'   
-#' p3 = cv_res$knot_summary %>%
-#'  ggplot2::ggplot(ggplot2::aes(x = knot, group = "")) +
-#'  ggplot2::geom_point(ggplot2::aes(y = MSFE), colour = "blue") +
-#'  ggplot2::geom_point(ggplot2::aes(y = MAFE), colour = "red") +
-#'  ggplot2::geom_line(ggplot2::aes(y = MSFE), colour = "blue") +
-#'  ggplot2::geom_line(ggplot2::aes(y = MAFE), colour = "red")
-#'  
-#'  gridExtra::grid.arrange(p1, p2, p3)
 #' @export
 mc_cv <- function(fit, # mcreg object
                   Kfold = 5,
@@ -96,27 +63,23 @@ mc_cv <- function(fit, # mcreg object
   pooled_formula = formula(paste(fit$y_var, "~", x_vars))
   
   # initialise result storage objects
-  pooled_cv_fits = cv_fits = train = test = list()
+  mc_fits = pooled_fits = train = test = list()
   
-  # run the mc_reg() function over the Kfolds and
-  # capture the results
+  # generate the trained models
   for(fold in seq_len(Kfold)){
+    # split out the train and test data
     train[[fold]] = fit$raw_data[fold_id != fold,]
     test[[fold]] = fit$raw_data[fold_id == fold,]
-    # note the problem here, there's different scaling for each fold
-    # kind of want to hold the scaling constant across the folds
-    
-    # to do: force lambda grid in the cv_fits,
-    # this is passed in now, but not implemented
-    # can't see how to feed it into genlasso
-    cv_fits[[fold]] = mc_reg(train[[fold]], 
+    # run the mc_reg() function on the training data
+    # using the same lambda grid as the original fit
+    mc_fits[[fold]] = mc_reg(train[[fold]], 
                              class_var = fit$class_var,
                              y_var = fit$y_var,
                              scale = fit$scale,
                              center_y = fit$center_y,
                              lambdas = fit$lambdas)
-    
-    pooled_cv_fits[[fold]] = lm(pooled_formula, data = train[[fold]])
+    # fit the pooled model to the training data
+    pooled_fits[[fold]] = lm(pooled_formula, data = train[[fold]])
   }
   
   # OK now we need to evaluate performance for each run
@@ -133,7 +96,8 @@ mc_cv <- function(fit, # mcreg object
   # data_to_lists(fit$coef_df, class_var = )
   # data_to_lists(test[[1]], class_var = fit$class_var, y_var = fit$y_var)$X
   
-  pooled_forecast_errors = forecast_errors = list()
+  # set up 
+  pooled_fe_list = mc_fe_list = list()
   
   # think about converting to multicore loop
   for(fold in seq_len(Kfold)){
@@ -151,45 +115,43 @@ mc_cv <- function(fit, # mcreg object
     test_x_data = test_data
     test_x_data[[fit$y_var]] = NULL
     # convert the x data frame into long form
-    test_x_data_df = tidyr::gather(test_x_data, key = x_var,
-                                   value = x_value, -class, -obs_no)
+    test_x_data_df = tidyr::gather(test_x_data,
+                                   key = x_var,
+                                   value = x_value,
+                                   -class, -obs_no)
     # calculate the forecast errors by joining the x data in
     # with the coefficient date frame, this repeats the
-    # estiamted coefficients down the data frame for the 
+    # estimated coefficients down the data frame for the 
     # number of observations in each variable and class
-    forecast_errors[[fold]] = dplyr::left_join(cv_fits[[fold]]$coef_df, 
-                                            test_x_data_df, 
-                                            by = c("class","x_var")) %>% 
-      dplyr::group_by(obs_no, class, knot) %>% 
+    mc_fe_list[[fold]] = dplyr::left_join(
+      mc_fits[[fold]]$coef_df, 
+      test_x_data_df, 
+      by = c("class","x_var")) %>% 
+      dplyr::group_by(.data$obs_no, .data$class, .data$knot) %>% 
       dplyr::summarise(prediction = sum(coef * x_value)) %>% 
       dplyr::ungroup() %>% 
       dplyr::left_join(test_y_data, by = c("obs_no", "class")) %>% 
-      dplyr::left_join(cv_fits[[fold]]$alpha, by = c("class", "knot")) %>% 
+      dplyr::left_join(mc_fits[[fold]]$alpha, by = c("class", "knot")) %>% 
       dplyr::mutate(yhat = prediction + alpha) %>% 
       dplyr::mutate(fe = !!rlang::sym(fit$y_var) - yhat)
     
-    classes = test_data[[fit$class_var]]
-    errors = predict(pooled_cv_fits[[fold]], newdata = test_data) - test_data[[fit$y_var]]
-    pooled_forecast_errors[[fold]] = data.frame(fe = errors, class = classes) %>%
+    # pooled forecast errors
+    pooled_yhat = predict(pooled_fits[[fold]], newdata = test_data)
+    pooled_errors = test_data[[fit$y_var]] - pooled_yhat
+    pooled_fe_list[[fold]] = data.frame(fe = pooled_errors, 
+                                        yhat = pooled_yhat,
+                                        y = test_data[[fit$y_var]], 
+                                        class = test_data[[fit$class_var]]) %>%
       tibble::rownames_to_column(var = "obs_no")
     
   }
   
-  # looks like our predictions are aligned with our observations
-  
-  # forecast_errors[[5]] %>%
-  #   ggplot2::ggplot(ggplot2::aes(x = y, y = yhat)) + 
-  #   ggplot2::geom_point() + 
-  #   ggplot2::facet_grid(class ~ knot) + 
-  #   ggplot2::geom_abline()
-  
-  # OK now we have the forecast_error list for each fold.  Let's combine it 
-  # into a single data frame
-  
-  fe = dplyr::bind_rows(forecast_errors, .id = "fold") %>% 
+  # OK now we have the forecast_error list for each fold.  
+  # Let's combine it into a single data frame of forecast errors.
+  fe = dplyr::bind_rows(mc_fe_list, .id = "fold") %>% 
     dplyr::mutate(knot = as.numeric(knot))
   
-  pooled_fe = dplyr::bind_rows(pooled_forecast_errors, .id = "fold") 
+  pooled_fe = dplyr::bind_rows(pooled_fe_list, .id = "fold") 
   
   pooled_class_fold_summary = pooled_fe %>% 
     dplyr::group_by(class, fold) %>% 
@@ -245,7 +207,6 @@ mc_cv <- function(fit, # mcreg object
   
   
   # "best" knot
-  
   knot_MSFE = knot_summary %>% 
     dplyr::arrange(MSFE) %>% 
     dplyr::slice(1) %>%
@@ -260,10 +221,13 @@ mc_cv <- function(fit, # mcreg object
   fit_MSFE = fit$coef_df %>% dplyr::filter(knot == knot_MSFE)
   fit_MAFE = fit$coef_df %>% dplyr::filter(knot == knot_MAFE)
   
-
-  
-  return(list(train = train, test = test, cv_fits = cv_fits,
-              fe = fe, pooled_fe = pooled_fe,
+  return(list(train = train,
+              test = test, 
+              # the mc_fits object may be overkill
+              # it's large and not directly accessed later
+              mc_fits = mc_fits,
+              fe = fe,
+              pooled_fe = pooled_fe,
               class_knot_fold_summary = class_knot_fold_summary,
               class_knot_summary = class_knot_summary, 
               knot_summary = knot_summary,
@@ -276,7 +240,7 @@ mc_cv <- function(fit, # mcreg object
 }
 
 
-#' Function to compute optimal value of regularization parameter based on K-fold cross-validation
+#' Depricated function to compute optimal value of regularization parameter based on K-fold cross-validation
 #' @param fit fitted object returned from multiclass_reg()
 #' @param Kfold K-fold cross-validation
 #' @param nweight vector of length K indicating weights for MSFE measure
@@ -286,17 +250,6 @@ mc_cv <- function(fit, # mcreg object
 #' @return A list with the following components
 #' \item{lambda_opt}{Selected value of the regularization parameter via BIC}
 #' \item{bhat_opt}{Estimated coefficients selected via BIC}
-#' @examples
-#' p <- 7
-#' k <- 2
-#' n <- 50
-#' beta <- c(1, 2)
-#' set.seed(1)
-#' X <- list(matrix(rnorm(p * n), ncol = p), matrix(rnorm(p * n), ncol = p))
-#' Y <- list(rnorm(n), rnorm(n))
-#' res <- multiclass_reg(Y, X)
-#' cv_res <- multiclass_cv(res)
-#' @export
 multiclass_cv <- function(fit, # bhats, lambdas,  Y, X, extract these from the fitted object
                           Kfold = 5,
                           nweight = NULL,
@@ -507,7 +460,7 @@ multiclass_cv <- function(fit, # bhats, lambdas,  Y, X, extract these from the f
     }
   }
   
-  #### Overall MSFE curve, averaged over all knots ####
+  #### Overall MSFE curve, averaged over all knots
   MSFEavg <- apply(MSFEcv, c(2, 3), mean, na.rm = T) # Of Dimension (knots)x(l1length)
   # Choose best value for l1pen
   l1opt.knot <- which.min(apply(MSFEavg, 2, min))
@@ -524,7 +477,7 @@ multiclass_cv <- function(fit, # bhats, lambdas,  Y, X, extract these from the f
   lfl0.FC <- determine.weights(FE = MSFEavg[, 1], knots = lfl0.lbub)
   lfl1opt.FC <- determine.weights(FE = MSFEavg[, l1opt.knot], knots = lfl1opt.lbub)
   
-  #### MSFE curve per group ####
+  #### MSFE curve per group
   MSFEKavg <- apply(MSFEKcv, c(1, 2, 4), mean, na.rm = T) # of dimension nbr.knots x K x l1length
   l1opt.knotK <- lfl1opt.knotK <- lfl0.knotK <- rep(NA, K)
   lfl1opt.lbubk <- lfl0.lbubk <- matrix(NA, ncol = 2, nrow = K)
@@ -563,18 +516,18 @@ multiclass_cv <- function(fit, # bhats, lambdas,  Y, X, extract these from the f
   # lfl1opt.FCk : list with FC results for each knot k for lfl1opt
   
   out <- list(
-    "MSFEcv" = MSFEcv, 
+    "MSFEcv" = MSFEcv,
     "MSFEavg" = MSFEavg,
-    "l1opt.knot" = l1opt.knot, 
-    "lfl1opt.knot" = lfl1opt.knot, 
+    "l1opt.knot" = l1opt.knot,
+    "lfl1opt.knot" = lfl1opt.knot,
     "lfl0.knot" = lfl0.knot,
-    "lfl1opt.lbub" = lfl1opt.lbub, 
-    "lfl0.lbub" = lfl0.lbub, 
-    "lfl0.FC" = lfl0.FC, 
+    "lfl1opt.lbub" = lfl1opt.lbub,
+    "lfl0.lbub" = lfl0.lbub,
+    "lfl0.FC" = lfl0.FC,
     "lfl1opt.FC" = lfl1opt.FC,
-    "MSFEKcv" = MSFEKcv, 
+    "MSFEKcv" = MSFEKcv,
     "MSFEKavg" = MSFEKavg,
-    "l1opt.knotK" = l1opt.knotK, 
+    "l1opt.knotK" = l1opt.knotK,
     "lfl1opt.knotK" = lfl1opt.knotK, "lfl0.knotK" = lfl0.knotK,
     "lfl0.lbubk" = lfl0.lbubk, "lfl1opt.lbubk" = lfl1opt.lbubk, "lfl0.FCk" = lfl0.FCk, "lfl1opt.FCk" = lfl1opt.FCk
   )

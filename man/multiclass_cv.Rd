@@ -2,7 +2,7 @@
 % Please edit documentation in R/cv.R
 \name{multiclass_cv}
 \alias{multiclass_cv}
-\title{Function to compute optimal value of regularization parameter based on K-fold cross-validation}
+\title{Depricated function to compute optimal value of regularization parameter based on K-fold cross-validation}
 \usage{
 multiclass_cv(
   fit,
@@ -34,16 +34,5 @@ A list with the following components
 \item{bhat_opt}{Estimated coefficients selected via BIC}
 }
 \description{
-Function to compute optimal value of regularization parameter based on K-fold cross-validation
-}
-\examples{
-p <- 7
-k <- 2
-n <- 50
-beta <- c(1, 2)
-set.seed(1)
-X <- list(matrix(rnorm(p * n), ncol = p), matrix(rnorm(p * n), ncol = p))
-Y <- list(rnorm(n), rnorm(n))
-res <- multiclass_reg(Y, X)
-cv_res <- multiclass_cv(res)
+Depricated function to compute optimal value of regularization parameter based on K-fold cross-validation
 }

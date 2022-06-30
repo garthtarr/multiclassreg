@@ -2,7 +2,7 @@
 % Please edit documentation in R/data_to_lists.R
 \name{data_to_lists}
 \alias{data_to_lists}
-\title{Take a data frame and return the lists required for muliclass_reg() to work}
+\title{Data frame to lists}
 \usage{
 data_to_lists(data, class_var = "class", y_var = "y")
 }
@@ -16,11 +16,11 @@ well as the class identifier variable}
 }
 \value{
 A list with the following components
-\item{Y}{list of size K. Its kth entry is a vector of size n_k}
-\item{X}{list of size K. Its kth entry is a matrix of size n_kxp}
+\item{Y}{list of size \eqn{K}. Its kth entry is a vector of size \eqn{n_k}}
+\item{X}{list of size \eqn{K}. Its kth entry is a matrix of size \eqn{n_{k} \times p}}
 }
 \description{
-Take a data frame and return the lists required for muliclass_reg() to work
+Takes a data frame and return the lists required for \code{muliclass_reg()} to work
 }
 \examples{
 p = 7
@@ -30,7 +30,7 @@ beta = c(1,2)
 set.seed(1)
 X = list(matrix(rnorm(p*n), ncol = p), matrix(rnorm(p*n), ncol = p))
 Y = list(rnorm(n), rnorm(n))
-df = lists_to_data(Y,X)
+df = lists_to_data(Y, X)
 lst = data_to_lists(df)
 
 }

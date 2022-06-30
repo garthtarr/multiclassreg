@@ -23,7 +23,7 @@ inputs(
 
 \item{weights}{provide vector of weights}
 
-\item{wtype}{either "size" (default, weighting based on group samle sizes)}
+\item{wtype}{either `"size"` (default, weighting based on group sample sizes) or `"sizesqrt"`}
 
 \item{buildD}{logical. If TRUE: compute Dmatrix}
 

@@ -1,12 +1,13 @@
-#' Take a data frame and return the lists required for muliclass_reg() to work
+#' Data frame to lists
 #'
+#' @description Takes a data frame and return the lists required for \code{muliclass_reg()} to work
 #' @param data data frame with (at least) all the variables in the formula as 
 #'   well as the class identifier variable
 #' @param class_var the name of the class variable in the data frame
 #' @param y_var the name of the dependent variable in the data frame
 #' @return A list with the following components
-#' \item{Y}{list of size K. Its kth entry is a vector of size n_k}
-#' \item{X}{list of size K. Its kth entry is a matrix of size n_kxp}
+#' \item{Y}{list of size \eqn{K}. Its kth entry is a vector of size \eqn{n_k}}
+#' \item{X}{list of size \eqn{K}. Its kth entry is a matrix of size \eqn{n_{k} \times p}}
 #' 
 #' @examples
 #' p = 7
@@ -16,39 +17,45 @@
 #' set.seed(1)
 #' X = list(matrix(rnorm(p*n), ncol = p), matrix(rnorm(p*n), ncol = p))
 #' Y = list(rnorm(n), rnorm(n))
-#' df = lists_to_data(Y,X)
+#' df = lists_to_data(Y, X)
 #' lst = data_to_lists(df)
 #' 
 #' @export
 data_to_lists <- function(
   data, 
   class_var = "class", 
-  y_var = "y"){
+  y_var = "y"
+  ){
   
   y = split(data[,y_var, drop = FALSE], f = data[,class_var])
   y = lapply(y, as.matrix)
   
-  X = split(data[,!names(data) %in% c(y_var,class_var)], f = data[,class_var])
+  X = split(data[,!names(data) %in% c(y_var, class_var)], f = data[,class_var])
   X = lapply(X, as.matrix)
-  Xnew = X
-  # thought I might need to remove NA columns but then realised that I don't
-  # K = length(X)
-  # # Build predictor set deleting the NA columns
-  # Xnew <- vector("list", K)
-  # for(i in 1:K){
-  #   Xnew[[i]] <- X[[i]][, !apply(X[[i]], 2, function(U){all(is.na(U))}),  drop = FALSE]
-  #   colnames(Xnew[[i]]) <- colnames(X[[i]])[!apply(X[[i]], 2, function(U){all(is.na(U))})]
-  # }
-  return(list(y=y,X=Xnew))
+
+  return(list(y = y, X = X))
 }
 
-#' Take lists and convert them to data frame
+#' List to data frame
 #'
+#' @description Take lists and convert them to data frame
 #' @param Y list of response vectors
 #' @param X list of predictor matrices
 #' @return A data frame with all the X variables, 
-#'   as well as the Y variable and a new column identifying the class.
-#'   
+#' as well as the Y variable and a new column identifying 
+#' the class.
+#' 
+#' @examples
+#' p = 7
+#' k = 2
+#' n = 20
+#' beta = c(1,2)
+#' set.seed(1)
+#' X = list(matrix(rnorm(p*n), ncol = p), matrix(rnorm(p*n), ncol = p))
+#' Y = list(rnorm(n), rnorm(n))
+#' df = lists_to_data(Y, X)
+#' lst = data_to_lists(df)
+#'  
 #' @export
 lists_to_data = function(Y, X){
   if(length(X)!=length(Y)){
@@ -57,6 +64,6 @@ lists_to_data = function(Y, X){
   Xdf = dplyr::bind_rows(lapply(X, as.data.frame), .id = "class")
   Ydf = dplyr::bind_rows(lapply(Y, as.data.frame))
   colnames(Ydf) = "y"
-  df = dplyr::bind_cols(Xdf,Ydf)
+  df = dplyr::bind_cols(Xdf, Ydf)
   return(df)
 }

@@ -59,27 +59,5 @@ df = data.frame(y = yk, Xk, class = rep(c("A", "B"), each = n))
 df$X1[df$class == "A"] = NA
 df$X7[df$class == "B"] = NA
 mc = mc_reg(df)
-mc$predictions \%>\% ggplot2::ggplot(ggplot2::aes(x = y, y = prediction)) +
-  geom_abline() + 
-  ggplot2::geom_point() +
-  ggplot2::facet_grid(class ~ knot, labeller = label_both) +
-  ggplot2::geom_smooth(method = "lm") +
-  ggplot2::geom_point() + 
-  labs(title = "Original scale before adding an intercept adjustment")
-mc$scaled_predictions \%>\% ggplot2::ggplot(ggplot2::aes(x = y, y = scaled_prediction)) +
-  geom_abline() + 
-  ggplot2::geom_point() +
-  ggplot2::facet_grid(class ~ knot, labeller = label_both) +
-  ggplot2::geom_smooth(method = "lm") +
-  ggplot2::geom_point() + 
-  labs(title = "Scaled version")
-  
-mc$predictions \%>\% ggplot2::ggplot(ggplot2::aes(x = y, y = yhat)) +
- geom_abline() + 
- ggplot2::geom_point() +
- ggplot2::facet_grid(class ~ knot, labeller = label_both) +
- ggplot2::geom_smooth(method = "lm") +
- ggplot2::geom_point() + 
- labs(title = "Original scale with alpha added in")
  
 }

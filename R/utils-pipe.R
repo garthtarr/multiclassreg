@@ -9,3 +9,16 @@
 #' @importFrom magrittr %>%
 #' @usage lhs \%>\% rhs
 NULL
+
+
+#' @importFrom stats formula
+NULL
+
+#' @importFrom stats lm
+NULL
+
+#' @importFrom stats predict
+NULL
+
+#' @importFrom rlang .data
+NULL

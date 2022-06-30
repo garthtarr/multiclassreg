@@ -30,8 +30,19 @@ mc_cv(
 }
 \value{
 A list with the following components
-\item{lambda_opt}{Selected value of the regularization parameter via BIC}
-\item{bhat_opt}{Estimated coefficients selected via BIC}
+\item{train}{list of the training splits used}
+\item{test}{list of the testing splits used}
+\item{mc_fits}{List of length Kfold. Each element is a mc_reg() object that was fit on a training split.}
+\item{fe}{A data frame of forecast errors. Includes CV prediction (yhat), observed value (y), class and knot.}
+\item{pooled_fe}{}
+\item{class_knot_fold_summary}{One MSFE and MAFE for each fold, knot, class combination.}
+\item{class_knot_summary}{One MSFE and MAFE for each knot and each class.}
+\item{knot_summary}{One MSFE and MAFE for each knot.}
+\item{pooled_class_fold_summary}{One MSFE and MAFE for each fold and each class.}
+\item{pooled_class_summary}{One MSFE and MAFE for each class.}
+\item{pooled_summary}{One overall MSFE and MAFE for the pooled model.}
+\item{fit_MSFE}{Data frame with the coefficients from the full fitted model that correspond to the optimal knot as defined by MSFE cross validation, this is a subset of \code{fit$coef_df} which is supplied as an argument to the CV function.}
+\item{fit_MAFE}{Data frame with the coefficients from the full fitted model that correspond to the optimal knot as defined by MAFE cross validation, this is a subset of \code{fit$coef_df} which is supplied as an argument to the CV function.}
 }
 \description{
 New function to compute optimal value of regularization parameter based on K-fold cross-validation
@@ -47,48 +58,4 @@ Y <- list(rnorm(n), rnorm(n))
 df = lists_to_data(Y, X)
 res = mc_reg(df)
 cv_res <- mc_cv(res)
-
-p = 7
-k = 2
-n = 100
-beta = c(1,2)
-set.seed(2)
-X = list(matrix(rnorm(p*n), ncol = p), matrix(rnorm(p*n), ncol = p))
-Y = list(rnorm(n), rnorm(n))
-df = lists_to_data(Y, X)
-Xk <- mvtnorm::rmvnorm(n*2, mean=1:p, sigma=diag(1:p)) \%>\% round(2)
-yk <- Xk \%*\% c(0,0,4,0,0,8,0) + rnorm(n*2) + rep(c(0,100), each = n) \%>\% round(2)
-df = data.frame(y = yk, Xk, class = rep(c("A", "B"), each = n))
-res = mc_reg(df)
-cv_res <- mc_cv(res)
-
-# different cv runs have different lamda values
-# is this a problem?
-cv_res$cv_fits[[1]]$lambda
-cv_res$cv_fits[[2]]$lambda
-# should fix the lambda grid across all lambda runs
-# with fixed lambda values, we need to force that
-# using either the full original data 
-# Note this is "fixed" because we don't use the 
-# default lambda grid when extracting coefficients
-
-
-p1 = cv_res$class_knot_summary \%>\%
-  ggplot2::ggplot(ggplot2::aes(x = knot, colour = class)) +
-  ggplot2::geom_point(ggplot2::aes(y = MSFE)) +
-  ggplot2::geom_line(ggplot2::aes(y = MSFE))
-
-p2 = cv_res$class_knot_summary \%>\%
-  ggplot2::ggplot(ggplot2::aes(x = knot, colour = class)) +
-  ggplot2::geom_point(ggplot2::aes(y = MAFE)) +
-  ggplot2::geom_line(ggplot2::aes(y = MAFE))
-  
-p3 = cv_res$knot_summary \%>\%
- ggplot2::ggplot(ggplot2::aes(x = knot, group = "")) +
- ggplot2::geom_point(ggplot2::aes(y = MSFE), colour = "blue") +
- ggplot2::geom_point(ggplot2::aes(y = MAFE), colour = "red") +
- ggplot2::geom_line(ggplot2::aes(y = MSFE), colour = "blue") +
- ggplot2::geom_line(ggplot2::aes(y = MAFE), colour = "red")
- 
- gridExtra::grid.arrange(p1, p2, p3)
 }
