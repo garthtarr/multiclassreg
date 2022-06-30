@@ -23,7 +23,7 @@ remotes::install_github("garthtarr/multiclassreg")
 
 ### Documentation
 
-Documentation can be found at https://garthtarr.github.io/multiclassreg/
+Documentation can be found at https://garthtarr.github.io/multiclassreg/ with some specific examples of [use](https://garthtarr.github.io/multiclassreg/articles/examples.html).
 
 
 
